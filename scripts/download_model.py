@@ -9,7 +9,9 @@ def download_file(url: str, filename: str, download_dir: str):
 
     try:
         filepath = os.path.join(download_dir, filename)
-        content_length = int(requests.head(url).headers.get("content-length", 0))
+        # Use allow_redirects=True because some URLs (like NGC) redirect to other locations
+        head_response = requests.head(url, allow_redirects=True)
+        content_length = int(head_response.headers.get("content-length", 0))
 
         # If file already exists and size matches, skip download
         if os.path.isfile(filepath) and os.path.getsize(filepath) == content_length:
