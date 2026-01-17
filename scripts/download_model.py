@@ -4,6 +4,7 @@ import json
 import requests
 from tqdm import tqdm
 
+
 def download_file(url: str, filename: str, download_dir: str):
     """Download a file if it does not already exist."""
 
@@ -29,17 +30,13 @@ def download_file(url: str, filename: str, download_dir: str):
         response.raise_for_status()
 
         # Create progress bar
-        total_size = int(response.headers.get('content-length', 0))
+        total_size = int(response.headers.get("content-length", 0))
         progress_bar = tqdm(
-            total=total_size, 
-            unit='iB', 
-            unit_scale=True, 
-            ncols=70, 
-            file=sys.stdout
+            total=total_size, unit="iB", unit_scale=True, ncols=70, file=sys.stdout
         )
 
         # Write response content to file
-        with open(filepath, 'wb') as f:
+        with open(filepath, "wb") as f:
             for data in response.iter_content(chunk_size=1024):
                 f.write(data)
                 progress_bar.update(len(data))  # Update progress bar
@@ -52,13 +49,13 @@ def download_file(url: str, filename: str, download_dir: str):
             print("ERROR, something went wrong while downloading")
             raise Exception()
 
-
     except Exception as e:
         print(f"An error occurred: {e}")
 
+
 def main():
     """Main function to download files from URLs in a config file."""
-    
+
     # Get JSON config file path
     script_dir = os.path.dirname(os.path.realpath(__file__))
     config_file_path = os.path.join(script_dir, "download_models.json")

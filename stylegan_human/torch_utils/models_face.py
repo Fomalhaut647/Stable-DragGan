@@ -19,7 +19,7 @@ class PixelNorm(nn.Module):
         super().__init__()
 
     def forward(self, input):
-        return input * torch.rsqrt(torch.mean(input ** 2, dim=1, keepdim=True) + 1e-8)
+        return input * torch.rsqrt(torch.mean(input**2, dim=1, keepdim=True) + 1e-8)
 
 
 def make_kernel(k):
@@ -38,7 +38,7 @@ class Upsample(nn.Module):
         super().__init__()
 
         self.factor = factor
-        kernel = make_kernel(kernel) * (factor ** 2)
+        kernel = make_kernel(kernel) * (factor**2)
         self.register_buffer("kernel", kernel)
 
         p = kernel.shape[0] - factor
@@ -82,7 +82,7 @@ class Blur(nn.Module):
         kernel = make_kernel(kernel)
 
         if upsample_factor > 1:
-            kernel = kernel * (upsample_factor ** 2)
+            kernel = kernel * (upsample_factor**2)
 
         self.register_buffer("kernel", kernel)
 
@@ -103,7 +103,7 @@ class EqualConv2d(nn.Module):
         self.weight = nn.Parameter(
             torch.randn(out_channel, in_channel, kernel_size, kernel_size)
         )
-        self.scale = 1 / math.sqrt(in_channel * kernel_size ** 2)
+        self.scale = 1 / math.sqrt(in_channel * kernel_size**2)
 
         self.stride = stride
         self.padding = padding
@@ -218,7 +218,7 @@ class ModulatedConv2d(nn.Module):
 
             self.blur = Blur(blur_kernel, pad=(pad0, pad1))
 
-        fan_in = in_channel * kernel_size ** 2
+        fan_in = in_channel * kernel_size**2
         self.scale = 1 / math.sqrt(fan_in)
         self.padding = kernel_size // 2
 
@@ -439,13 +439,13 @@ class Generator(nn.Module):
 
         for layer_idx in range(self.num_layers):
             res = (layer_idx + 5) // 2
-            shape = [1, 1, 2 ** res, 2 ** res]
+            shape = [1, 1, 2**res, 2**res]
             self.noises.register_buffer(
                 "noise_{}".format(layer_idx), torch.randn(*shape)
             )
 
         for i in range(3, self.log_size + 1):
-            out_channel = self.channels[2 ** i]
+            out_channel = self.channels[2**i]
 
             self.convs.append(
                 StyledConv(
@@ -473,11 +473,11 @@ class Generator(nn.Module):
     def make_noise(self):
         device = self.input.input.device
 
-        noises = [torch.randn(1, 1, 2 ** 2, 2 ** 2, device=device)]
+        noises = [torch.randn(1, 1, 2**2, 2**2, device=device)]
 
         for i in range(3, self.log_size + 1):
             for _ in range(2):
-                noises.append(torch.randn(1, 1, 2 ** i, 2 ** i, device=device))
+                noises.append(torch.randn(1, 1, 2**i, 2**i, device=device))
 
         return noises
 
@@ -528,7 +528,7 @@ class Generator(nn.Module):
         # print(styles)
         if len(styles) < 2:
             inject_index = self.n_latent
-            
+
             if styles[0].ndim < 3:
                 latent = styles[0].unsqueeze(1).repeat(1, inject_index, 1)
                 # print("a")
@@ -541,7 +541,7 @@ class Generator(nn.Module):
             # print("c")
             if inject_index is None:
                 inject_index = 4
-            
+
             latent = styles[0].unsqueeze(0)
             if latent.shape[1] == 1:
                 latent = latent.repeat(1, inject_index, 1)
@@ -698,34 +698,34 @@ class StyleDiscriminator(nn.Module):
             EqualLinear(channels[4], 1),
         )
 
-#     def forward(self, input):
-#         out = self.convs(input)
+    #     def forward(self, input):
+    #         out = self.convs(input)
 
-#         batch, channel, height, width = out.shape
-#         group = min(batch, self.stddev_group)
-#         stddev = out.view(
-#             group, -1, self.stddev_feat, channel // self.stddev_feat, height, width
-#         )
-#         stddev = torch.sqrt(stddev.var(0, unbiased=False) + 1e-8)
-#         stddev = stddev.mean([2, 3, 4], keepdims=True).squeeze(2)
-#         stddev = stddev.repeat(group, 1, height, width)
-#         out = torch.cat([out, stddev], 1)
+    #         batch, channel, height, width = out.shape
+    #         group = min(batch, self.stddev_group)
+    #         stddev = out.view(
+    #             group, -1, self.stddev_feat, channel // self.stddev_feat, height, width
+    #         )
+    #         stddev = torch.sqrt(stddev.var(0, unbiased=False) + 1e-8)
+    #         stddev = stddev.mean([2, 3, 4], keepdims=True).squeeze(2)
+    #         stddev = stddev.repeat(group, 1, height, width)
+    #         out = torch.cat([out, stddev], 1)
 
-#         out = self.final_conv(out)
+    #         out = self.final_conv(out)
 
-#         out = out.view(batch, -1)
-#         out = self.final_linear(out)
+    #         out = out.view(batch, -1)
+    #         out = self.final_linear(out)
 
-#         return out
-    
+    #         return out
+
     def forward(self, input):
         h = input
         h_list = []
-        
+
         for index, blocklist in enumerate(self.convs):
             h = blocklist(h)
             h_list.append(h)
-         
+
         out = h
         batch, channel, height, width = out.shape
         group = min(batch, self.stddev_group)
@@ -739,17 +739,17 @@ class StyleDiscriminator(nn.Module):
 
         out = self.final_conv(out)
         h_list.append(out)
-        
+
         out = out.view(batch, -1)
         out = self.final_linear(out)
-        
+
         return out, h_list
 
 
 class StyleEncoder(nn.Module):
     def __init__(self, size, w_dim=512):
         super().__init__()
-        
+
         channels = {
             4: 512,
             8: 512,
@@ -759,14 +759,14 @@ class StyleEncoder(nn.Module):
             128: 128,
             256: 64,
             512: 32,
-            1024: 16
-        }        
-        
+            1024: 16,
+        }
+
         self.w_dim = w_dim
         log_size = int(math.log(size, 2))
-        
+
         # self.n_latents = log_size*2 - 2
-        
+
         convs = [ConvLayer(3, channels[size], 1)]
 
         in_channel = channels[size]
@@ -776,16 +776,16 @@ class StyleEncoder(nn.Module):
             in_channel = out_channel
 
         # convs.append(EqualConv2d(in_channel, self.n_latents*self.w_dim, 4, padding=0, bias=False))
-        convs.append(EqualConv2d(in_channel,2*self.w_dim, 4, padding=0, bias=False))    
-
+        convs.append(EqualConv2d(in_channel, 2 * self.w_dim, 4, padding=0, bias=False))
 
         self.convs = nn.Sequential(*convs)
 
     def forward(self, input):
         out = self.convs(input)
         # return out.view(len(input), self.n_latents, self.w_dim)
-        reshaped =  out.view(len(input), 2*self.w_dim)
-        return reshaped[:,:self.w_dim], reshaped[:,self.w_dim:]
+        reshaped = out.view(len(input), 2 * self.w_dim)
+        return reshaped[:, : self.w_dim], reshaped[:, self.w_dim :]
+
 
 def kaiming_init(m):
     if isinstance(m, (nn.Linear, nn.Conv2d)):

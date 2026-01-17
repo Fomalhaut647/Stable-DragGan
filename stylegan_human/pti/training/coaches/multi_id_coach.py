@@ -11,7 +11,6 @@ from utils.log_utils import log_images_from_w
 
 
 class MultiIDCoach(BaseCoach):
-
     def __init__(self, data_loader, use_wandb):
         super().__init__(data_loader, use_wandb)
 
@@ -19,9 +18,9 @@ class MultiIDCoach(BaseCoach):
         self.G.synthesis.train()
         self.G.mapping.train()
 
-        w_path_dir = f'{paths_config.embedding_base_dir}/{paths_config.input_data_id}'
+        w_path_dir = f"{paths_config.embedding_base_dir}/{paths_config.input_data_id}"
         os.makedirs(w_path_dir, exist_ok=True)
-        os.makedirs(f'{w_path_dir}/{paths_config.pti_results_keyword}', exist_ok=True)
+        os.makedirs(f"{w_path_dir}/{paths_config.pti_results_keyword}", exist_ok=True)
 
         use_ball_holder = True
         w_pivots = []
@@ -32,10 +31,14 @@ class MultiIDCoach(BaseCoach):
                 break
 
             image_name = fname[0]
-            if hyperparameters.first_inv_type == 'w+':
-                embedding_dir = f'{w_path_dir}/{paths_config.e4e_results_keyword}/{image_name}'
+            if hyperparameters.first_inv_type == "w+":
+                embedding_dir = (
+                    f"{w_path_dir}/{paths_config.e4e_results_keyword}/{image_name}"
+                )
             else:
-                embedding_dir = f'{w_path_dir}/{paths_config.pti_results_keyword}/{image_name}'
+                embedding_dir = (
+                    f"{w_path_dir}/{paths_config.pti_results_keyword}/{image_name}"
+                )
             os.makedirs(embedding_dir, exist_ok=True)
 
             w_pivot = self.get_inversion(w_path_dir, image_name, image)
@@ -55,14 +58,24 @@ class MultiIDCoach(BaseCoach):
                 real_images_batch = image.to(global_config.device)
 
                 generated_images = self.forward(w_pivot)
-                loss, l2_loss_val, loss_lpips = self.calc_loss(generated_images, real_images_batch, image_name,
-                                      self.G, use_ball_holder, w_pivot)
+                loss, l2_loss_val, loss_lpips = self.calc_loss(
+                    generated_images,
+                    real_images_batch,
+                    image_name,
+                    self.G,
+                    use_ball_holder,
+                    w_pivot,
+                )
 
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.optimizer.step()
 
-                use_ball_holder = global_config.training_step % hyperparameters.locality_regularization_interval == 0
+                use_ball_holder = (
+                    global_config.training_step
+                    % hyperparameters.locality_regularization_interval
+                    == 0
+                )
 
                 global_config.training_step += 1
                 self.image_counter += 1
@@ -73,7 +86,11 @@ class MultiIDCoach(BaseCoach):
         # torch.save(self.G,
         #            f'{paths_config.checkpoints_dir}/model_{global_config.run_name}_multi_id.pt')
         snapshot_data = dict()
-        snapshot_data['G_ema'] = self.G
+        snapshot_data["G_ema"] = self.G
         import pickle
-        with open(f'{paths_config.checkpoints_dir}/model_{global_config.run_name}_multi_id.pkl', 'wb') as f: 
-                pickle.dump(snapshot_data, f)
+
+        with open(
+            f"{paths_config.checkpoints_dir}/model_{global_config.run_name}_multi_id.pkl",
+            "wb",
+        ) as f:
+            pickle.dump(snapshot_data, f)

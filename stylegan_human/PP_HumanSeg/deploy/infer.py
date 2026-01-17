@@ -35,11 +35,10 @@ from ..scripts.optic_flow_process import optic_flow_process
 
 class DeployConfig:
     def __init__(self, path):
-        with codecs.open(path, 'r', 'utf-8') as file:
+        with codecs.open(path, "r", "utf-8") as file:
             self.dic = yaml.load(file, Loader=yaml.FullLoader)
 
-        self._transforms = self._load_transforms(self.dic['Deploy'][
-            'transforms'])
+        self._transforms = self._load_transforms(self.dic["Deploy"]["transforms"])
         self._dir = os.path.dirname(path)
 
     @property
@@ -48,17 +47,17 @@ class DeployConfig:
 
     @property
     def model(self):
-        return os.path.join(self._dir, self.dic['Deploy']['model'])
+        return os.path.join(self._dir, self.dic["Deploy"]["model"])
 
     @property
     def params(self):
-        return os.path.join(self._dir, self.dic['Deploy']['params'])
+        return os.path.join(self._dir, self.dic["Deploy"]["params"])
 
     def _load_transforms(self, t_list):
         com = manager.TRANSFORMS
         transforms = []
         for t in t_list:
-            ctype = t.pop('type')
+            ctype = t.pop("type")
             transforms.append(com[ctype](**t))
 
         return transforms
@@ -71,8 +70,7 @@ class Predictor:
         self.compose = T.Compose(self.cfg.transforms)
         resize_h, resize_w = args.input_shape
 
-        self.disflow = cv2.DISOpticalFlow_create(
-            cv2.DISOPTICAL_FLOW_PRESET_ULTRAFAST)
+        self.disflow = cv2.DISOpticalFlow_create(cv2.DISOPTICAL_FLOW_PRESET_ULTRAFAST)
         self.prev_gray = np.zeros((resize_h, resize_w), np.uint8)
         self.prev_cfd = np.zeros((resize_h, resize_w), np.float32)
         self.is_init = True
@@ -113,7 +111,6 @@ class Predictor:
         output = output_handle.copy_to_cpu()
         return self.postprocess(output, img, ori_shapes[0], bg)
 
-
     def postprocess(self, pred, img, ori_shape, bg):
         if not os.path.exists(self.args.save_dir):
             os.makedirs(self.args.save_dir)
@@ -125,8 +122,14 @@ class Predictor:
                 score_map = 255 * score_map
                 cur_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 cur_gray = cv2.resize(cur_gray, (resize_w, resize_h))
-                optflow_map = optic_flow_process(cur_gray, score_map, self.prev_gray, self.prev_cfd, \
-                        self.disflow, self.is_init)
+                optflow_map = optic_flow_process(
+                    cur_gray,
+                    score_map,
+                    self.prev_gray,
+                    self.prev_cfd,
+                    self.disflow,
+                    self.is_init,
+                )
                 self.prev_gray = cur_gray.copy()
                 self.prev_cfd = optflow_map.copy()
                 self.is_init = False
@@ -137,9 +140,9 @@ class Predictor:
                     paddle.to_tensor(score_map),
                     ori_shape,
                     self.cfg.transforms,
-                    mode='bilinear')
-                alpha = np.transpose(score_map.numpy().squeeze(0),
-                                     [1, 2, 0]) / 255
+                    mode="bilinear",
+                )
+                alpha = np.transpose(score_map.numpy().squeeze(0), [1, 2, 0]) / 255
             else:
                 score_map = pred[:, 1, :, :]
                 score_map = score_map[np.newaxis, ...]
@@ -147,18 +150,19 @@ class Predictor:
                     paddle.to_tensor(score_map),
                     ori_shape,
                     self.cfg.transforms,
-                    mode='bilinear')
+                    mode="bilinear",
+                )
                 alpha = np.transpose(score_map.numpy().squeeze(0), [1, 2, 0])
 
         else:
             if pred.ndim == 3:
                 pred = pred[:, np.newaxis, ...]
             result = reverse_transform(
-                paddle.to_tensor(
-                    pred, dtype='float32'),
+                paddle.to_tensor(pred, dtype="float32"),
                 ori_shape,
                 self.cfg.transforms,
-                mode='bilinear')
+                mode="bilinear",
+            )
 
             result = np.array(result)
             if self.args.add_argmax:
@@ -170,7 +174,7 @@ class Predictor:
         # background replace
         h, w, _ = img.shape
         if bg is None:
-            bg = np.ones_like(img)*255
+            bg = np.ones_like(img) * 255
         else:
             bg = cv2.resize(bg, (w, h))
             if bg.ndim == 2:

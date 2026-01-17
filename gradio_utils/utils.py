@@ -11,46 +11,42 @@ class ImageMask(gr.components.Image):
     is_template = True
 
     def __init__(self, **kwargs):
-        super().__init__(source="upload",
-                         tool="sketch",
-                         interactive=False,
-                         **kwargs)
+        super().__init__(source="upload", tool="sketch", interactive=False, **kwargs)
 
     def preprocess(self, x):
         if x is None:
             return x
-        if self.tool == "sketch" and self.source in ["upload", "webcam"
-                                                     ] and type(x) != dict:
+        if (
+            self.tool == "sketch"
+            and self.source in ["upload", "webcam"]
+            and type(x) != dict
+        ):
             decode_image = gr.processing_utils.decode_base64_to_image(x)
             width, height = decode_image.size
             mask = np.ones((height, width, 4), dtype=np.uint8)
             mask[..., -1] = 255
             mask = self.postprocess(mask)
-            x = {'image': x, 'mask': mask}
+            x = {"image": x, "mask": mask}
         return super().preprocess(x)
 
 
 def get_valid_mask(mask: np.ndarray):
-    """Convert mask from gr.Image(0 to 255, RGBA) to binary mask.
-    """
+    """Convert mask from gr.Image(0 to 255, RGBA) to binary mask."""
     if mask.ndim == 3:
-        mask_pil = Image.fromarray(mask).convert('L')
+        mask_pil = Image.fromarray(mask).convert("L")
         mask = np.array(mask_pil)
     if mask.max() == 255:
         mask = mask / 255
     return mask
 
 
-def draw_points_on_image(image,
-                         points,
-                         curr_point=None,
-                         highlight_all=True,
-                         radius_scale=0.01):
+def draw_points_on_image(
+    image, points, curr_point=None, highlight_all=True, radius_scale=0.01
+):
     overlay_rgba = Image.new("RGBA", image.size, 0)
     overlay_draw = ImageDraw.Draw(overlay_rgba)
     for point_key, point in points.items():
-        if ((curr_point is not None and curr_point == point_key)
-                or highlight_all):
+        if (curr_point is not None and curr_point == point_key) or highlight_all:
             p_color = (255, 0, 0)
             t_color = (0, 0, 255)
 
@@ -105,8 +101,7 @@ def draw_points_on_image(image,
                 # overlay_draw.text(t_draw, "t", font=font, align="center", fill=(0, 0, 0))
                 overlay_draw.text(t_draw, "t", align="center", fill=(0, 0, 0))
 
-    return Image.alpha_composite(image.convert("RGBA"),
-                                 overlay_rgba).convert("RGB")
+    return Image.alpha_composite(image.convert("RGBA"), overlay_rgba).convert("RGB")
 
 
 def draw_mask_on_image(image, mask):
@@ -114,21 +109,16 @@ def draw_mask_on_image(image, mask):
     im_mask_rgba = np.concatenate(
         (
             np.tile(im_mask[..., None], [1, 1, 3]),
-            45 * np.ones(
-                (im_mask.shape[0], im_mask.shape[1], 1), dtype=np.uint8),
+            45 * np.ones((im_mask.shape[0], im_mask.shape[1], 1), dtype=np.uint8),
         ),
         axis=-1,
     )
     im_mask_rgba = Image.fromarray(im_mask_rgba).convert("RGBA")
 
-    return Image.alpha_composite(image.convert("RGBA"),
-                                 im_mask_rgba).convert("RGB")
+    return Image.alpha_composite(image.convert("RGBA"), im_mask_rgba).convert("RGB")
 
 
-def on_change_single_global_state(keys,
-                                  value,
-                                  global_state,
-                                  map_transform=None):
+def on_change_single_global_state(keys, value, global_state, map_transform=None):
     if map_transform is not None:
         value = map_transform(value)
 

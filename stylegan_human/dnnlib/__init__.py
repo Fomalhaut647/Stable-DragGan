@@ -1,4 +1,4 @@
-﻿# Copyright (c) SenseTime Research. All rights reserved.
+# Copyright (c) SenseTime Research. All rights reserved.
 
 # Copyright (c) 2021, NVIDIA CORPORATION.  All rights reserved.
 #

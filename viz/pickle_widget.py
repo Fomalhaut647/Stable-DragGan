@@ -17,23 +17,26 @@ from gui_utils import imgui_utils
 
 from . import renderer
 
-#----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
+
 
 def _locate_results(pattern):
     return pattern
 
-#----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
+
 
 class PickleWidget:
     def __init__(self, viz):
-        self.viz            = viz
-        self.search_dirs    = []
-        self.cur_pkl        = None
-        self.user_pkl       = ''
-        self.recent_pkls    = []
-        self.browse_cache   = dict() # {tuple(path, ...): [dnnlib.EasyDict(), ...], ...}
+        self.viz = viz
+        self.search_dirs = []
+        self.cur_pkl = None
+        self.user_pkl = ""
+        self.recent_pkls = []
+        self.browse_cache = dict()  # {tuple(path, ...): [dnnlib.EasyDict(), ...], ...}
         self.browse_refocus = False
-        self.load('', ignore_errors=True)
+        self.load("", ignore_errors=True)
 
     def add_recent(self, pkl, ignore_errors=False):
         try:
@@ -47,13 +50,13 @@ class PickleWidget:
     def load(self, pkl, ignore_errors=False):
         viz = self.viz
         viz.clear_result()
-        viz.skip_frame() # The input field will change on next frame.
+        viz.skip_frame()  # The input field will change on next frame.
         try:
             resolved = self.resolve_pkl(pkl)
-            name = resolved.replace('\\', '/').split('/')[-1]
+            name = resolved.replace("\\", "/").split("/")[-1]
             self.cur_pkl = resolved
             self.user_pkl = resolved
-            viz.result.message = f'Loading {name}...'
+            viz.result.message = f"Loading {name}..."
             viz.defer_rendering()
             if resolved in self.recent_pkls:
                 self.recent_pkls.remove(resolved)
@@ -61,8 +64,8 @@ class PickleWidget:
         except:
             self.cur_pkl = None
             self.user_pkl = pkl
-            if pkl == '':
-                viz.result = dnnlib.EasyDict(message='No network pickle loaded')
+            if pkl == "":
+                viz.result = dnnlib.EasyDict(message="No network pickle loaded")
             else:
                 viz.result = dnnlib.EasyDict(error=renderer.CapturedException())
             if not ignore_errors:
@@ -73,36 +76,52 @@ class PickleWidget:
         viz = self.viz
         recent_pkls = [pkl for pkl in self.recent_pkls if pkl != self.user_pkl]
         if show:
-            imgui.text('Pickle')
+            imgui.text("Pickle")
             imgui.same_line(viz.label_w)
-            idx = self.user_pkl.rfind('/')
-            changed, self.user_pkl = imgui_utils.input_text('##pkl', self.user_pkl[idx+1:], 1024,
-                flags=(imgui.INPUT_TEXT_AUTO_SELECT_ALL | imgui.INPUT_TEXT_ENTER_RETURNS_TRUE),
+            idx = self.user_pkl.rfind("/")
+            changed, self.user_pkl = imgui_utils.input_text(
+                "##pkl",
+                self.user_pkl[idx + 1 :],
+                1024,
+                flags=(
+                    imgui.INPUT_TEXT_AUTO_SELECT_ALL
+                    | imgui.INPUT_TEXT_ENTER_RETURNS_TRUE
+                ),
                 width=(-1),
-                help_text='<PATH> | <URL> | <RUN_DIR> | <RUN_ID> | <RUN_ID>/<KIMG>.pkl')
+                help_text="<PATH> | <URL> | <RUN_DIR> | <RUN_ID> | <RUN_ID>/<KIMG>.pkl",
+            )
             if changed:
                 self.load(self.user_pkl, ignore_errors=True)
-            if imgui.is_item_hovered() and not imgui.is_item_active() and self.user_pkl != '':
+            if (
+                imgui.is_item_hovered()
+                and not imgui.is_item_active()
+                and self.user_pkl != ""
+            ):
                 imgui.set_tooltip(self.user_pkl)
             # imgui.same_line()
-            imgui.text(' ')
+            imgui.text(" ")
             imgui.same_line(viz.label_w)
-            if imgui_utils.button('Recent...', width=viz.button_w, enabled=(len(recent_pkls) != 0)):
-                imgui.open_popup('recent_pkls_popup')
+            if imgui_utils.button(
+                "Recent...", width=viz.button_w, enabled=(len(recent_pkls) != 0)
+            ):
+                imgui.open_popup("recent_pkls_popup")
             imgui.same_line()
-            if imgui_utils.button('Browse...', enabled=len(self.search_dirs) > 0, width=viz.button_w):
-                imgui.open_popup('browse_pkls_popup')
+            if imgui_utils.button(
+                "Browse...", enabled=len(self.search_dirs) > 0, width=viz.button_w
+            ):
+                imgui.open_popup("browse_pkls_popup")
                 self.browse_cache.clear()
                 self.browse_refocus = True
 
-        if imgui.begin_popup('recent_pkls_popup'):
+        if imgui.begin_popup("recent_pkls_popup"):
             for pkl in recent_pkls:
                 clicked, _state = imgui.menu_item(pkl)
                 if clicked:
                     self.load(pkl, ignore_errors=True)
             imgui.end_popup()
 
-        if imgui.begin_popup('browse_pkls_popup'):
+        if imgui.begin_popup("browse_pkls_popup"):
+
             def recurse(parents):
                 key = tuple(parents)
                 items = self.browse_cache.get(key, None)
@@ -110,20 +129,21 @@ class PickleWidget:
                     items = self.list_runs_and_pkls(parents)
                     self.browse_cache[key] = items
                 for item in items:
-                    if item.type == 'run' and imgui.begin_menu(item.name):
+                    if item.type == "run" and imgui.begin_menu(item.name):
                         recurse([item.path])
                         imgui.end_menu()
-                    if item.type == 'pkl':
+                    if item.type == "pkl":
                         clicked, _state = imgui.menu_item(item.name)
                         if clicked:
                             self.load(item.path, ignore_errors=True)
                 if len(items) == 0:
                     with imgui_utils.grayed_out():
-                        imgui.menu_item('No results found')
+                        imgui.menu_item("No results found")
+
             recurse(self.search_dirs)
             if self.browse_refocus:
                 imgui.set_scroll_here()
-                viz.skip_frame() # Focus will change on next frame.
+                viz.skip_frame()  # Focus will change on next frame.
                 self.browse_refocus = False
             imgui.end_popup()
 
@@ -135,22 +155,34 @@ class PickleWidget:
 
     def list_runs_and_pkls(self, parents):
         items = []
-        run_regex = re.compile(r'\d+-.*')
-        pkl_regex = re.compile(r'network-snapshot-\d+\.pkl')
+        run_regex = re.compile(r"\d+-.*")
+        pkl_regex = re.compile(r"network-snapshot-\d+\.pkl")
         for parent in set(parents):
             if os.path.isdir(parent):
                 for entry in os.scandir(parent):
                     if entry.is_dir() and run_regex.fullmatch(entry.name):
-                        items.append(dnnlib.EasyDict(type='run', name=entry.name, path=os.path.join(parent, entry.name)))
+                        items.append(
+                            dnnlib.EasyDict(
+                                type="run",
+                                name=entry.name,
+                                path=os.path.join(parent, entry.name),
+                            )
+                        )
                     if entry.is_file() and pkl_regex.fullmatch(entry.name):
-                        items.append(dnnlib.EasyDict(type='pkl', name=entry.name, path=os.path.join(parent, entry.name)))
+                        items.append(
+                            dnnlib.EasyDict(
+                                type="pkl",
+                                name=entry.name,
+                                path=os.path.join(parent, entry.name),
+                            )
+                        )
 
-        items = sorted(items, key=lambda item: (item.name.replace('_', ' '), item.path))
+        items = sorted(items, key=lambda item: (item.name.replace("_", " "), item.path))
         return items
 
     def resolve_pkl(self, pattern):
         assert isinstance(pattern, str)
-        assert pattern != ''
+        assert pattern != ""
 
         # URL => return as is.
         if dnnlib.util.is_url(pattern):
@@ -161,7 +193,7 @@ class PickleWidget:
 
         # Run dir => pick the last saved snapshot.
         if os.path.isdir(path):
-            pkl_files = sorted(glob.glob(os.path.join(path, 'network-snapshot-*.pkl')))
+            pkl_files = sorted(glob.glob(os.path.join(path, "network-snapshot-*.pkl")))
             if len(pkl_files) == 0:
                 raise IOError(f'No network pickle found in "{path}"')
             path = pkl_files[-1]
@@ -170,4 +202,5 @@ class PickleWidget:
         path = os.path.abspath(path)
         return path
 
-#----------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
