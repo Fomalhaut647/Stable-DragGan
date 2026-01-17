@@ -23,5 +23,7 @@ dependencies:
     - gradio==3.35.2
     - pyopengl==3.1.5
     - imageio-ffmpeg==0.4.3
+    - pydantic<2.0
+    - fastapi<0.110.0
     # pyspng is currently broken on MacOS (see https://github.com/nurpax/pyspng/pull/6 for instance)
     - pyspng-seunglab
