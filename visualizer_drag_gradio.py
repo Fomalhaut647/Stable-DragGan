@@ -3,12 +3,10 @@ import os.path as osp
 from argparse import ArgumentParser
 from functools import partial
 
+import dnnlib
 import gradio as gr
 import numpy as np
 import torch
-from PIL import Image
-
-import dnnlib
 from gradio_utils import (
     ImageMask,
     draw_mask_on_image,
@@ -17,6 +15,7 @@ from gradio_utils import (
     get_valid_mask,
     on_change_single_global_state,
 )
+from PIL import Image
 from viz.renderer import Renderer, add_watermark_np
 
 parser = ArgumentParser()
@@ -335,6 +334,20 @@ with gr.Blocks() as app:
                 form_image = ImageMask(
                     value=global_state.value["images"]["image_show"], brush_radius=20
                 ).style(width=768, height=768)  # NOTE: hard image size code here.
+    
+    # Feature Fusion control - placed outside main layout to avoid ImageMask bug
+    with gr.Row():
+        form_enable_fusion = gr.Checkbox(
+            label="Enable Feature Fusion (better background preservation)",
+            value=global_state.value["params"]["enable_feature_fusion"],
+        )
+        form_fusion_res = gr.Dropdown(
+            choices=[64, 128, 256, 512],
+            value=global_state.value["params"]["fusion_res"],
+            label="Fusion Resolution",
+            interactive=True,
+        )
+    
     gr.Markdown("""
         ## Quick Start
 
@@ -468,6 +481,36 @@ with gr.Blocks() as app:
     form_lr_number.change(
         on_change_lr,
         inputs=[form_lr_number, global_state],
+        outputs=[global_state],
+    )
+
+    # Feature fusion toggle handler
+    def on_change_enable_fusion(enable_fusion, global_state):
+        global_state["params"]["enable_feature_fusion"] = enable_fusion
+        # Reset cached fusion features when toggling
+        renderer = global_state["renderer"]
+        if hasattr(renderer, 'fusion_feat0'):
+            renderer.fusion_feat0 = None
+        return global_state
+
+    form_enable_fusion.change(
+        on_change_enable_fusion,
+        inputs=[form_enable_fusion, global_state],
+        outputs=[global_state],
+    )
+
+    # Feature fusion resolution handler
+    def on_change_fusion_res(fusion_res, global_state):
+        global_state["params"]["fusion_res"] = int(fusion_res)
+        # Reset cached fusion features when changing resolution
+        renderer = global_state["renderer"]
+        if hasattr(renderer, 'fusion_feat0'):
+            renderer.fusion_feat0 = None
+        return global_state
+
+    form_fusion_res.change(
+        on_change_fusion_res,
+        inputs=[form_fusion_res, global_state],
         outputs=[global_state],
     )
 

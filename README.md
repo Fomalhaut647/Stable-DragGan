@@ -154,11 +154,10 @@ python visualizer_drag.py --no-fusion
 python visualizer_drag.py --fusion --fusion-res 512
 ```
 
-#### GUI Controls
+#### Web/GUI Controls
 
-Both versions also provide UI controls:
-- **Enable Feature Fusion**: Checkbox to toggle the feature
-- **Fusion Resolution**: Select the resolution at which fusion is applied (32, 64, 128, 256, 512)
+- **Gradio Version** (`visualizer_drag_gradio.py`): Feature Fusion checkbox and Fusion Resolution dropdown are available below the image area.
+- **GUI Version** (`visualizer_drag.py`): Feature Fusion checkbox and Fusion Resolution input are available in the Mask section of the control panel.
 
 ### Tips
 
