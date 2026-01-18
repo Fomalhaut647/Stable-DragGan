@@ -323,23 +323,6 @@ with gr.Blocks() as app:
                                 label="Lambda",
                             )
 
-                # Feature Fusion settings for improved background preservation
-                with gr.Row():
-                    with gr.Column(scale=1, min_width=10):
-                        gr.Markdown(value="Fusion", show_label=False)
-                    with gr.Column(scale=4, min_width=10):
-                        form_enable_fusion = gr.Checkbox(
-                            label="Enable Feature Fusion",
-                            value=global_state.value["params"]["enable_feature_fusion"],
-                            info="Blend initial features with generated features for better background preservation",
-                        )
-                        form_fusion_res = gr.Dropdown(
-                            choices=[32, 64, 128, 256, 512],
-                            value=global_state.value["params"]["fusion_res"],
-                            label="Fusion Resolution",
-                            interactive=True,
-                        )
-
                 form_draw_interval_number = gr.Number(
                     value=global_state.value["draw_interval"],
                     label="Draw Interval (steps)",
@@ -485,33 +468,6 @@ with gr.Blocks() as app:
     form_lr_number.change(
         on_change_lr,
         inputs=[form_lr_number, global_state],
-        outputs=[global_state],
-    )
-
-    # Feature fusion event handlers
-    def on_change_enable_fusion(enable_fusion, global_state):
-        global_state["params"]["enable_feature_fusion"] = enable_fusion
-        # Reset fusion features when toggling
-        renderer = global_state["renderer"]
-        renderer.fusion_feat0 = None
-        return global_state
-
-    form_enable_fusion.change(
-        on_change_enable_fusion,
-        inputs=[form_enable_fusion, global_state],
-        outputs=[global_state],
-    )
-
-    def on_change_fusion_res(fusion_res, global_state):
-        global_state["params"]["fusion_res"] = int(fusion_res)
-        # Reset fusion features when changing resolution
-        renderer = global_state["renderer"]
-        renderer.fusion_feat0 = None
-        return global_state
-
-    form_fusion_res.change(
-        on_change_fusion_res,
-        inputs=[form_fusion_res, global_state],
         outputs=[global_state],
     )
 
