@@ -296,6 +296,7 @@ class Renderer:
 
         self.feat_refs = None
         self.points0_pt = None
+        self.fusion_feat0 = None  # Reset fusion features when network is initialized
 
     def update_lr(self, lr):
         del self.w_optim
@@ -327,6 +328,8 @@ class Renderer:
         is_drag=False,
         reset=False,
         to_pil=False,
+        enable_feature_fusion=False,
+        fusion_res=256,
         **kwargs,
     ):
         G = self.G
@@ -340,7 +343,44 @@ class Renderer:
         if reset:
             self.feat_refs = None
             self.points0_pt = None
+            self.fusion_feat0 = None  # Reset fusion features on reset
         self.points = points
+
+        # Cache initial features for fusion on first run or reset
+        if enable_feature_fusion and not hasattr(self, "fusion_feat0"):
+            self.fusion_feat0 = None
+
+        if enable_feature_fusion and self.fusion_feat0 is None:
+            # Generate initial features using w0 (initial latent)
+            label = torch.zeros([1, G.c_dim], device=self._device)
+            with torch.no_grad():
+                _, init_feat = G(
+                    self.w0,
+                    label,
+                    truncation_psi=trunc_psi,
+                    noise_mode=noise_mode,
+                    input_is_w=True,
+                    return_feature=True,
+                )
+            # Cache features at fusion resolution(s)
+            # block_resolutions: [4, 8, 16, 32, 64, 128, 256, 512, ...]
+            self.fusion_feat0 = {}
+            for idx, block_res in enumerate(G.synthesis.block_resolutions):
+                if block_res == fusion_res:
+                    self.fusion_feat0[block_res] = init_feat[idx].detach().clone()
+
+        # Prepare fusion dict if enabled
+        fusion = None
+        if enable_feature_fusion and self.fusion_feat0 is not None and mask is not None:
+            if mask.min() == 0 and mask.max() == 1:
+                # Convert UI mask (1=fixed, 0=movable) to fusion mask (1=movable, 0=fixed)
+                mask_movable = 1 - mask.to(self._device)
+                mask_movable = mask_movable.unsqueeze(0).unsqueeze(0)  # [1, 1, H, W]
+                fusion = {
+                    "mask": mask_movable,
+                    "feat_init": self.fusion_feat0,
+                    "fusion_res": [fusion_res],
+                }
 
         # Run synthesis network.
         label = torch.zeros([1, G.c_dim], device=self._device)
@@ -351,6 +391,7 @@ class Renderer:
             noise_mode=noise_mode,
             input_is_w=True,
             return_feature=True,
+            fusion=fusion,
         )
 
         h, w = G.img_resolution, G.img_resolution

@@ -27,6 +27,26 @@ parser.add_argument(
     action="store_true",
     help="launch gradio with 0.0.0.0 as server name, allowing to respond to network requests",
 )
+# Feature fusion arguments for background preservation
+parser.add_argument(
+    "--fusion",
+    action="store_true",
+    dest="enable_fusion",
+    default=False,
+    help="Enable feature fusion for better background preservation",
+)
+parser.add_argument(
+    "--no-fusion",
+    action="store_false",
+    dest="enable_fusion",
+    help="Disable feature fusion (default)",
+)
+parser.add_argument(
+    "--fusion-res",
+    type=int,
+    default=256,
+    help="Resolution at which to apply feature fusion (default: 256)",
+)
 args = parser.parse_args()
 
 cache_dir = args.cache_dir
@@ -197,6 +217,9 @@ with gr.Blocks() as app:
                 "trunc_psi": 0.7,
                 "trunc_cutoff": None,
                 "lr": 0.001,
+                # Feature fusion parameters
+                "enable_feature_fusion": args.enable_fusion,
+                "fusion_res": args.fusion_res,
             },
             "device": device,
             "draw_interval": 1,
@@ -299,6 +322,23 @@ with gr.Blocks() as app:
                                 interactive=True,
                                 label="Lambda",
                             )
+
+                # Feature Fusion settings for improved background preservation
+                with gr.Row():
+                    with gr.Column(scale=1, min_width=10):
+                        gr.Markdown(value="Fusion", show_label=False)
+                    with gr.Column(scale=4, min_width=10):
+                        form_enable_fusion = gr.Checkbox(
+                            label="Enable Feature Fusion",
+                            value=global_state.value["params"]["enable_feature_fusion"],
+                            info="Blend initial features with generated features for better background preservation",
+                        )
+                        form_fusion_res = gr.Dropdown(
+                            choices=[32, 64, 128, 256, 512],
+                            value=global_state.value["params"]["fusion_res"],
+                            label="Fusion Resolution",
+                            interactive=True,
+                        )
 
                 form_draw_interval_number = gr.Number(
                     value=global_state.value["draw_interval"],
@@ -448,6 +488,33 @@ with gr.Blocks() as app:
         outputs=[global_state],
     )
 
+    # Feature fusion event handlers
+    def on_change_enable_fusion(enable_fusion, global_state):
+        global_state["params"]["enable_feature_fusion"] = enable_fusion
+        # Reset fusion features when toggling
+        renderer = global_state["renderer"]
+        renderer.fusion_feat0 = None
+        return global_state
+
+    form_enable_fusion.change(
+        on_change_enable_fusion,
+        inputs=[form_enable_fusion, global_state],
+        outputs=[global_state],
+    )
+
+    def on_change_fusion_res(fusion_res, global_state):
+        global_state["params"]["fusion_res"] = int(fusion_res)
+        # Reset fusion features when changing resolution
+        renderer = global_state["renderer"]
+        renderer.fusion_feat0 = None
+        return global_state
+
+    form_fusion_res.change(
+        on_change_fusion_res,
+        inputs=[form_fusion_res, global_state],
+        outputs=[global_state],
+    )
+
     def on_click_start(global_state, image):
         p_in_pixels = []
         t_in_pixels = []
@@ -551,6 +618,11 @@ with gr.Blocks() as app:
                     # untransform     = False,
                     is_drag=True,
                     to_pil=True,
+                    # Feature fusion parameters
+                    enable_feature_fusion=global_state["params"][
+                        "enable_feature_fusion"
+                    ],
+                    fusion_res=global_state["params"]["fusion_res"],
                 )
 
                 if step_idx % global_state["draw_interval"] == 0:

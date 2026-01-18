@@ -707,7 +707,19 @@ class SynthesisNetwork(torch.nn.Module):
                 self.num_ws += block.num_torgb
             setattr(self, f"b{res}", block)
 
-    def forward(self, ws, return_feature=False, **block_kwargs):
+    def forward(self, ws, return_feature=False, fusion=None, **block_kwargs):
+        """
+        Forward pass with optional feature fusion for background preservation.
+
+        Args:
+            ws: Style vectors [batch, num_ws, w_dim]
+            return_feature: Whether to return intermediate features
+            fusion: Optional dict for feature fusion with keys:
+                - 'mask': Tensor [1, 1, H, W] where 1=movable area, 0=fixed background
+                - 'feat_init': Dict {res: Tensor} of initial features per resolution
+                - 'fusion_res': List of resolutions to apply fusion (e.g., [256, 512])
+            **block_kwargs: Additional arguments for synthesis blocks
+        """
         block_ws = []
         features = []
         with torch.autograd.profiler.record_function("split_ws"):
@@ -723,6 +735,24 @@ class SynthesisNetwork(torch.nn.Module):
         for res, cur_ws in zip(self.block_resolutions, block_ws):
             block = getattr(self, f"b{res}")
             x, img = block(x, img, cur_ws, **block_kwargs)
+
+            # Feature fusion: blend generated features with initial features based on mask
+            if fusion is not None and res in fusion.get("fusion_res", []):
+                mask = fusion["mask"]
+                feat_init = fusion["feat_init"].get(res)
+                if feat_init is not None:
+                    # Resize mask to current resolution if needed
+                    if mask.shape[-2:] != (res, res):
+                        mask_resized = F.interpolate(
+                            mask, size=(res, res), mode="bilinear", align_corners=False
+                        )
+                    else:
+                        mask_resized = mask
+                    # Ensure feat_init has same dtype as x
+                    feat_init = feat_init.to(dtype=x.dtype)
+                    # Fusion: mask=1 keeps generated (movable), mask=0 uses initial (fixed background)
+                    x = mask_resized * x + (1 - mask_resized) * feat_init
+
             features.append(x)
         if return_feature:
             return img, features
@@ -785,8 +815,23 @@ class Generator(torch.nn.Module):
         update_emas=False,
         input_is_w=False,
         return_feature=False,
+        fusion=None,
         **synthesis_kwargs,
     ):
+        """
+        Forward pass with optional feature fusion for background preservation.
+
+        Args:
+            z: Input latent codes or W codes if input_is_w=True
+            c: Conditioning labels
+            truncation_psi: Truncation psi for W space
+            truncation_cutoff: Truncation cutoff layer
+            update_emas: Whether to update exponential moving averages
+            input_is_w: Whether z is already in W space
+            return_feature: Whether to return intermediate features
+            fusion: Optional dict for feature fusion (see SynthesisNetwork.forward)
+            **synthesis_kwargs: Additional arguments for synthesis network
+        """
         if input_is_w:
             ws = z
             if ws.dim() == 2:
@@ -803,6 +848,7 @@ class Generator(torch.nn.Module):
             ws,
             update_emas=update_emas,
             return_feature=return_feature,
+            fusion=fusion,
             **synthesis_kwargs,
         )
         if return_feature:

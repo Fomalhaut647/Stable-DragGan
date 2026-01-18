@@ -412,12 +412,28 @@ class AsyncRenderer:
 @click.option(
     "--browse-dir", help="Specify model path for the 'Browse...' button", metavar="PATH"
 )
-def main(pkls, capture_dir, browse_dir):
+@click.option(
+    "--fusion/--no-fusion",
+    "enable_fusion",
+    default=False,
+    help="Enable/disable feature fusion for better background preservation",
+)
+@click.option(
+    "--fusion-res",
+    type=int,
+    default=256,
+    help="Resolution at which to apply feature fusion (default: 256)",
+)
+def main(pkls, capture_dir, browse_dir, enable_fusion, fusion_res):
     """Interactive model visualizer.
 
     Optional PATH argument can be used specify which .pkl file to load.
     """
     viz = Visualizer(capture_dir=capture_dir)
+
+    # Apply fusion settings from command line
+    viz.drag_widget.enable_feature_fusion = enable_fusion
+    viz.drag_widget.fusion_res = fusion_res
 
     if browse_dir is not None:
         viz.pickle_widget.search_dirs = [browse_dir]

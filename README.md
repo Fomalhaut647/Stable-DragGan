@@ -114,6 +114,59 @@ You can run DragGAN Gradio demo as well, this is universal for both windows and 
 python visualizer_drag_gradio.py
 ```
 
+## Feature Fusion for Background Preservation
+
+We have implemented an improved masking mechanism that goes beyond simple loss-based constraints. The **Feature Fusion** feature explicitly blends initial image features with generated features in the StyleGAN2 synthesis network, resulting in better background preservation during dragging.
+
+### How It Works
+
+Instead of only penalizing changes in masked regions via reconstruction loss, feature fusion directly replaces background features at high-resolution layers (e.g., 256x256) during the generation process:
+
+$$F_{out} = M \cdot F_{generated} + (1 - M) \cdot F_{initial}$$
+
+Where $M$ is the mask (1 = movable area, 0 = fixed background).
+
+### Usage
+
+#### Command Line Options
+
+**Gradio Version:**
+```sh
+# Enable feature fusion
+python visualizer_drag_gradio.py --fusion
+
+# Disable feature fusion (default)
+python visualizer_drag_gradio.py --no-fusion
+
+# Enable with custom fusion resolution
+python visualizer_drag_gradio.py --fusion --fusion-res 512
+```
+
+**GUI Version:**
+```sh
+# Enable feature fusion
+python visualizer_drag.py --fusion
+
+# Disable feature fusion (default)
+python visualizer_drag.py --no-fusion
+
+# Enable with custom fusion resolution
+python visualizer_drag.py --fusion --fusion-res 512
+```
+
+#### GUI Controls
+
+Both versions also provide UI controls:
+- **Enable Feature Fusion**: Checkbox to toggle the feature
+- **Fusion Resolution**: Select the resolution at which fusion is applied (32, 64, 128, 256, 512)
+
+### Tips
+
+1. First draw a mask using "Flexible area" to mark the regions you want to move
+2. Enable Feature Fusion for better background preservation
+3. Higher fusion resolution (e.g., 512) preserves more detail but may affect edit flexibility
+4. Lower fusion resolution (e.g., 128) allows more natural blending but less precise preservation
+
 ## Acknowledgement
 
 This code is developed based on [StyleGAN3](https://github.com/NVlabs/stylegan3). Part of the code is borrowed from [StyleGAN-Human](https://github.com/stylegan-human/StyleGAN-Human).

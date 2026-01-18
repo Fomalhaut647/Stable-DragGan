@@ -26,6 +26,9 @@ class DragWidget:
         self.feature_idx = 5
         self.r1 = 3
         self.r2 = 12
+        # Feature fusion settings for background preservation
+        self.enable_feature_fusion = False
+        self.fusion_res = 256  # Resolution at which to apply feature fusion
         self.path = os.path.abspath(
             os.path.join(os.path.dirname(__file__), "..", "_screenshots")
         )
@@ -167,6 +170,27 @@ class DragWidget:
                         "Lambda", self.lambda_mask
                     )
 
+                # Feature Fusion settings for improved background preservation
+                imgui.text("Fusion")
+                imgui.same_line(viz.label_w)
+                _clicked, self.enable_feature_fusion = imgui.checkbox(
+                    "Enable Feature Fusion", self.enable_feature_fusion
+                )
+
+                if self.enable_feature_fusion:
+                    imgui.text(" ")
+                    imgui.same_line(viz.label_w)
+                    with imgui_utils.item_width(viz.font_size * 6):
+                        changed, self.fusion_res = imgui.input_int(
+                            "Fusion Res", self.fusion_res
+                        )
+                        # Clamp fusion_res to valid power-of-2 resolutions
+                        if changed:
+                            valid_res = [32, 64, 128, 256, 512, 1024]
+                            self.fusion_res = min(
+                                valid_res, key=lambda x: abs(x - self.fusion_res)
+                            )
+
         self.disabled_time = max(self.disabled_time - viz.frame_delta, 0)
         if self.defer_frames > 0:
             self.defer_frames -= 1
@@ -182,6 +206,8 @@ class DragWidget:
         viz.args.r1 = self.r1
         viz.args.r2 = self.r2
         viz.args.reset = reset
+        viz.args.enable_feature_fusion = self.enable_feature_fusion
+        viz.args.fusion_res = self.fusion_res
 
 
 # ----------------------------------------------------------------------------
