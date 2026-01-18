@@ -32,6 +32,9 @@
   </p>
 </p>
 
+## 中文使用手册
+[中文文档](./README_cn.md)
+
 ## Web Demos
 
 [![Open in OpenXLab](https://cdn-static.openxlab.org.cn/app-center/openxlab_app.svg)](https://openxlab.org.cn/apps/detail/XingangPan/DragGAN)
